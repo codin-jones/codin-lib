@@ -3,7 +3,7 @@
 I use [doxygen](http://www.stack.nl/~dimitri/doxygen/) to generate the html and man pages from codin-lib.
 
 
-### Doxygen generated [HTML](doc/output/html/index.html) API
+### Doxygen generated <a href="doc/output/html/index.html" target="_blank">HTML</a> API
 
 As I stated in the [Background](../../README.md) I like to jump right into the header files to learn the interfaces, however I realize normal people like to read some documentation in their browsers.
 
