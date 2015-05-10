@@ -1,0 +1,149 @@
+// DataGuard.icc
+// 
+
+#define DG DataGuard<Datum,Mutex>
+
+// hack
+#include <iostream>
+
+#define HERE std::cout << __FILE__ << ':' << __LINE__ << ' ' << __func__ << std::endl
+
+namespace cdn
+{
+namespace thread
+{
+
+template <typename Datum, typename Mutex>
+inline
+DG::DataGuard ()
+  : m_mutex (),
+    m_datum ()
+{ 
+  HERE; 
+}
+
+template <typename Datum, typename Mutex>
+inline
+DG::DataGuard (const Datum& datum)
+  : m_mutex (),
+    m_datum (datum)
+{ 
+  HERE;
+}
+
+template <typename Datum, typename Mutex>
+inline
+DG::DataGuard (Datum&& datum)
+  : m_mutex (),
+    m_datum (std::move (datum))
+{ 
+  HERE;
+}
+
+template <typename Datum, typename Mutex>
+template <typename... Args>
+inline
+DG::DataGuard (Args&&... args)
+  : m_mutex (),
+    m_datum (args...)
+{ 
+  HERE;
+}
+
+template <typename Datum, typename Mutex>
+inline
+const Datum&
+DG::operator () (const std::unique_lock<const DataGuard<Datum, Mutex>>& lock)
+  const
+  throw (std::system_error)
+{
+  return get (lock);
+}
+
+template <typename Datum, typename Mutex>
+inline
+Datum&
+DG::operator () (const std::unique_lock<DataGuard<Datum, Mutex>>& lock)
+  throw (std::system_error)
+{
+  return get (lock);
+}
+
+template <typename Datum, typename Mutex>
+inline
+const Datum&
+DG::get (const std::unique_lock<const DataGuard<Datum, Mutex>>& lock)
+  const
+  throw (std::system_error)
+{
+  if (lock.mutex () == nullptr 
+      || lock.mutex () != this)
+  {
+    throw std::system_error (EINVAL,
+                             std::system_category(), 
+                             "Locked mutex provided is not the DataGuard mutex");
+  }
+
+  return m_datum; 
+}
+
+template <typename Datum, typename Mutex>
+inline
+Datum&
+DG::get (const std::unique_lock<DataGuard<Datum, Mutex>>& lock)
+  throw (std::system_error)
+{
+  if (lock.mutex () == nullptr 
+      || lock.mutex () != this)
+  {
+    throw std::system_error (EINVAL,
+                             std::system_category(), 
+                             "Locked mutex provided is not the DataGuard mutex");
+  }
+
+  return m_datum; 
+}
+
+template <typename Datum, typename Mutex>
+inline
+void
+DG::lock ()
+  const
+  throw (std::system_error)
+{
+  // Preserve logical const, work-around physical const
+  const_cast<Mutex&> (m_mutex).lock ();
+} 
+
+template <typename Datum, typename Mutex>
+inline
+void
+DG::unlock ()
+  const
+  noexcept
+{
+  // Preserve logical const, work-around physical const
+  const_cast<Mutex&> (m_mutex).unlock ();
+} 
+
+
+template <typename Datum, typename Mutex = std::mutex>
+inline
+std::unique_lock <const DataGuard<Datum,Mutex>>
+lockDataGuard (const DataGuard<Datum,Mutex>& dataGuard)
+{
+  return std::unique_lock <const DataGuard<Datum,Mutex>> (dataGuard);
+}
+
+template <typename Datum, typename Mutex = std::mutex>
+inline
+std::unique_lock <DataGuard<Datum,Mutex>>
+lockDataGuard (DataGuard<Datum,Mutex>& dataGuard)
+{
+  return std::unique_lock <DataGuard<Datum,Mutex>> (dataGuard);
+}
+
+} // namespace thread
+} // namespace cdn
+
+#undef DG
