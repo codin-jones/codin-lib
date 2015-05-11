@@ -1,6 +1,6 @@
 # codin-lib
 
-# Skip all the background and jump to the [Documentation](doc/md/documentation.md)
+# Skip all the background and jump to the [Documentation](/doc/md/documentation.md)
 
 ### Background
 
@@ -43,5 +43,3 @@ file to understand the public interface of the class then that class is not
 documented well enough. I feel it is perfectly reasonable for a maintainer to need 
 to use the source file to gain the depth of understanding required to add or update
 functionality.
-
-
