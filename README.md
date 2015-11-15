@@ -1,6 +1,6 @@
 # codin-lib
 
-# Skip all the background and jump to the [Documentation](/doc/md/documentation.md)
+# Jump right to the [Documentation](doc/md/documentation.md)
 
 ### Background
 
@@ -21,9 +21,9 @@ I am not going to put in time to ensure that my library runs under Windows, sinc
 my needs are for Linux and Mac OS X. If someone wants to ensure it works
 under Windows then I would be happy to accept any modifications that are necessary.
 That being said I strive to make sure that I write standard C++ that any compliant
-compiler should be able to compile. I am going to the codin library compliant to the
-last released standard, since not everyone can be at the latest version. In other
-words right now C++14 is out so I will only use features from C++11. When C++17 
+compiler should be able to compile. I am going to make the codin library compliant
+to the last released standard, since not everyone can be at the latest version. In
+other words right now C++14 is out so I will only use features from C++11. When C++17 
 comes out then I will move to using features from C++14 and so on.
 
 ### The code I write at my day job isn't allowed to be publicly available.
@@ -31,7 +31,7 @@ comes out then I will move to using features from C++14 and so on.
 Therefore the code I write here is something I could actually show other people and
 discuss in an open forum.
 
-### Make the classes simple to  understand a the interface well documented right in the header file
+### Make the classes simple to understand and the interface well documented right in the header file
 
 For every project I have ever used, I jump right in the headers for the library and
 start wandering around to understand the interface. Yes, I also use the examples

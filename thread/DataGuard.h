@@ -52,12 +52,14 @@ public:
 
   ~DataGuard () = default;
 
-  // disallow copy
+  //! deleted
   DataGuard (const DataGuard&) = delete;
+  //! deleted
   DataGuard& operator= (const DataGuard&) = delete;
 
-  // disallow move
+  //! deleted
   DataGuard (DataGuard&&) = delete;
+  //! deleted
   DataGuard& operator= (DataGuard&&) = delete;
 
 
@@ -67,20 +69,24 @@ public:
   // if the lock supplied is not associated with this DataGuard
   //
 
+  //! const accessor
   const Datum&
   operator () (const std::unique_lock<const DataGuard<Datum, Mutex>>& lock)
     const
     throw (std::system_error);
 
+  //! non-const accessor
   Datum&
   operator () (const std::unique_lock<DataGuard<Datum, Mutex>>& lock)
     throw (std::system_error);
 
+  //! const accessor
   const Datum&
   get (const std::unique_lock<const DataGuard<Datum, Mutex>>& lock)
     const
     throw (std::system_error);
 
+  //! non-const accessor
   Datum&
   get (const std::unique_lock<DataGuard<Datum, Mutex>>& lock)
     throw (std::system_error);
@@ -112,10 +118,54 @@ private:
   Datum m_datum;
 };
 
+//! \page cdn_thread_DataGuard Example usage of the DataGuard
+//! Simple DataGuard usage:
+//! \code
+//!
+//! cdn::thread::DataGuard<int> dg;
+//!
+//! // Lock the DataGuard object using the helper function
+//! // The lock is of type std::unique_lock
+//! auto lock (std::thread::lockDataGuard (dg));
+//!
+//! // You can access the int wrapped by the DataGuard by using the operator()
+//! // or the get() method, both are overloaded for read/write access of Datum
+//!
+//! int v = dg (lock);
+//! 
+//! int v2 = dg.get (lock);
+//! 
+//! \endcode
+
+//! \page cdn_thread_DataGuard_cond Example usage of std::condition_variable_any and DataGuard
+//! You can use a std::condition_variable::any with DataGuard:
+//! \code
+//!
+//! cdn::thread::DataGuard<int> dg (1975);
+//! std::condition_variable_any cond;
+//! 
+//! auto fut = std::async (std::launch::async,
+//!                        [&] 
+//!                        { 
+//!                          std::cout << "Notify thread delaying..." << std::endl;
+//!                          std::this_thread::sleep_for (std::chrono::milliseconds (850));
+//!                          std::cout << "Notify thread calling notify_one..." << std::endl;
+//!                          cond.notify_one ();
+//!                        });
+//! 
+//! auto lock = cdn::thread::lockDataGuard (dg);
+//! std::cout << "Waiting..." << std::endl;
+//! // A proper wait would use a predicate to ignore spurious signals
+//! cond.wait (dg);
+//! std::cout << "Signaled!" << std::endl;
+//! 
+//! fut.get ();
+//! 
+//! \endcode
 
 //
-// Simple helper temlate functions to allow for cleaner syntax to lock the
-// DataGuard object
+// Simple helper template functions to allow for simpler/cleaner syntax to lock
+// the DataGuard object
 //
 
 //! \page cdn_thread_lockDataGuardExample Example usage of the lockDataGuard method
@@ -147,13 +197,13 @@ std::unique_lock <DataGuard<Datum,Mutex>>
 lockDataGuard (DataGuard<Datum,Mutex>& dataGuard);
 
 
+//! template typedef for std::recursive_mutex
+template <typename Datum>
+using RecursiveDataGuard = DataGuard<Datum, std::recursive_mutex>; 
+
 } // namespace thread
 } // namespace cdn
 
 #include "DataGuard.icc"
-
-//! template typedef for std::recursive_mutex
-template <typename Datum>
-using RecursiveDataGuard = DataGuard<Datum, std::recursive_mutex>; 
 
 #endif // #ifndef CDN_DATA_GUARD_INCLUDED
