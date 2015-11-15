@@ -1,0 +1,10 @@
+# ignore emacs droppings
+*~
+
+# ignore Mac droppings
+.DS_Store
+
+# ignore generated output
+doc/output
+objs
+test_*
