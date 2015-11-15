@@ -26,6 +26,14 @@ to the last released standard, since not everyone can be at the latest version. 
 other words right now C++14 is out so I will only use features from C++11. When C++17 
 comes out then I will move to using features from C++14 and so on.
 
+### I only test with gcc
+
+I try to write standard compliant code as much as possible but my needs all end
+up being used with gcc, therefore I am only going to worry about gcc (for now).
+A side note on that is in my experience, gcc/g++ 4.9.2 or greater has the best
+shot at supporting C++11 features so I am expecting that version or better.
+Currently I test with g++ 5.2.0.
+
 ### The code I write at my day job isn't allowed to be publicly available.
 
 Therefore the code I write here is something I could actually show other people and
@@ -43,3 +51,18 @@ file to understand the public interface of the class then that class is not
 documented well enough. I feel it is perfectly reasonable for a maintainer to need 
 to use the source file to gain the depth of understanding required to add or update
 functionality.
+
+### Building codin-lib
+
+At the moment there isn't anything to build since it all lives in template land. :D
+However if you would like to build the test examples perform the following make from
+the top level of codin-lib
+
+```shell
+% make tests
+```
+
+Why not ```make``` or ```make all``` in my opinion those are reserved for building
+the actual library bits. In my experience the test builds of different packages are
+a separate target. So maybe someday there will be a ```make``` prior to the 
+```make tests``` but for now that is all there is.
