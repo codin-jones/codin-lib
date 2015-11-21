@@ -22,9 +22,10 @@ my needs are for Linux and Mac OS X. If someone wants to ensure it works
 under Windows then I would be happy to accept any modifications that are necessary.
 That being said I strive to make sure that I write standard C++ that any compliant
 compiler should be able to compile. I am going to make the codin library compliant
-to the last released standard, since not everyone can be at the latest version. In
-other words right now C++14 is out so I will only use features from C++11. When C++17 
-comes out then I will move to using features from C++14 and so on.
+to the previously released standard to the current version, since not everyone can
+be at the latest version. In other words right now C++14 has been released so I
+will only use features from C++11. When C++17 comes out then I will move to using
+features from C++14 and so on.
 
 ### I only test with gcc
 

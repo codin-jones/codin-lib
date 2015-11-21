@@ -1,0 +1,47 @@
+// ScopedWith.icc
+//
+#include "ScopedWith.h"
+
+#define SW ScopedWith<TypeT>
+
+//! The main namespace for the codin-lib
+namespace cdn
+{
+//! misc related classes and utilities
+namespace misc
+{
+
+template <typename TypeT>
+inline
+SW::ScopedWith (TypeT& tt)
+  noexcept
+  : m_tt (tt)
+{ }
+
+template <typename TypeT>
+inline
+TypeT*
+SW::operator-> () 
+  noexcept
+{
+  return &m_tt; 
+}
+  
+template <typename TypeT>
+inline
+SW::operator bool() const
+noexcept
+{ return true; }
+
+template <typename TypeT>
+inline
+ScopedWith<TypeT>
+makeScopedWith (TypeT& tt)
+{
+  return ScopedWith<TypeT> (tt);
+}
+
+} // namespace misc
+} // namespace cdn
+
+#undef SW

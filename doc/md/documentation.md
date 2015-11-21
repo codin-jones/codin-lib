@@ -20,5 +20,5 @@ you need to perform the command ```man cdn_thread_DataGuard```
 ### Sample usage
 
 I developed a unit test for each class, refer to them for example usage.
-Alternately you can refer to the [Related Pages](https://345debf3e473676794b2679187fb17c6e1a63d38.googledrive.com/host/0B1ztEpdpMB0JR2g0ek1SRzNrZnM/pages.html) 
+Alternately you can refer to the [Examples](https://345debf3e473676794b2679187fb17c6e1a63d38.googledrive.com/host/0B1ztEpdpMB0JR2g0ek1SRzNrZnM/examples.html) 
 under the doxygen documentation for some simple examples.

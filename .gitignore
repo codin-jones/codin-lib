@@ -7,4 +7,3 @@
 # ignore generated output
 doc/output
 objs
-test_*

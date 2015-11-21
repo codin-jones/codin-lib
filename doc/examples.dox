@@ -1,0 +1,139 @@
+/*! \page examples Examples of using the codin-lib
+ *
+ * \tableofcontents
+ *
+ * \section container namespace container
+ *
+ * \subsection CircularQueue
+ *
+ * Simple CircularQueue usage
+ * \code
+ * cdn::container::CircularQueue<int, 5> cq (cdn::container::CircularQueueMode::BlockOnWrite);
+ *
+ * cq.push (42);
+ *
+ * int val = cq.pop ();
+ *
+ * \endcode
+ *
+ * CircularQueue pop with timeout
+ * \code
+ * cdn::container::CircularQueue<int, 5> cq (cdn::container::CircularQueueMode::BlockOnWrite);
+ *
+ * boost::optional<const int> v = cq.pop (std::chrono::milliseconds (250));
+ *
+ * if (! v)
+ * {
+ *   std::cout << "Pop timedout" << std::endl;
+ * }
+ * else
+ * {
+ *   std::cout << "Popped value=" << v.value () << std::endl;
+ * }
+ * \endcode
+ *
+ * \section thread namespace thread
+ *
+ * \subsection DataGuard
+ *
+ * Simple DataGuard usage
+ * \code
+ * cdn::thread::DataGuard<int> dg;
+ *
+ * auto lock (std::unique_lock<cdn::thread::DataGuard<int>> (dg));
+ *
+ * // You can access the int wrapped by the DataGuard by using the operator()
+ * // or the get() method, both are overloaded for read/write access of Datum
+ *
+ * int v = dg (lock);
+ * 
+ * int v2 = dg.get (lock);
+ * \endcode
+ * 
+ * Locking DataGuard using the lockDataGuard helper function:
+ * \code
+ * cdn::thread::DataGuard<int> dg;
+ *
+ * auto lock (std::thread::lockDataGuard (dg));
+ *
+ * // same as above for access of datum
+ *
+ * \endcode
+ *
+ * Using a <a href="http://en.cppreference.com/w/cpp/thread/condition_variable_any">std::condition_variable_any</a> with DataGuard
+ *
+ * \code
+ * cdn::thread::DataGuard<int> dg (1975);
+ * std::condition_variable_any cond;
+ * 
+ * auto fut = std::async (std::launch::async,
+ *                        [&] 
+ *                        { 
+ *                          std::cout << "Notify thread delaying..." << std::endl;
+ *                          std::this_thread::sleep_for (std::chrono::milliseconds (850));
+ *                          std::cout << "Notify thread calling notify_one..." << std::endl;
+ *                          cond.notify_one ();
+ *                        });
+ * 
+ * auto lock = cdn::thread::lockDataGuard (dg);
+ * std::cout << "Waiting..." << std::endl;
+ * // A proper wait would use a predicate to ignore spurious signals
+ * cond.wait (lock);
+ * std::cout << "Signaled!" << std::endl;
+ * 
+ * fut.get ();
+ * \endcode
+ *
+ * \section misc namespace misc
+ *
+ * \subsection ScopedWith
+ * 
+ * CDN_WITH
+ *
+ * \code
+ * struct level_three
+ * {
+ *   int index;
+ * };
+ *
+ * struct level_two
+ * {
+ *   float offset;
+ *   level_three lvlThree;
+ * };
+ * 
+ * // ...
+ * 
+ * level_two lt = { 42.24, { 77 } };
+ *
+ * CDN_WITH(lt.lvlThree)
+ * {
+ *   std::cout << "T->index=" << T->index << std::endl;
+ * }
+ * \endcode
+ *
+ * CDN_WITH_AS
+ *
+ * \code
+ * struct level_three
+ * {
+ *   int index;
+ * };
+ *
+ * struct level_two
+ * {
+ *   float offset;
+ *   level_three lvlThree;
+ * };
+ * 
+ * // ...
+ * 
+ * level_two lt = { 42.24, { 77 } };
+ *
+ * CDN_WITH_AS(lt.lvlThree, three)
+ * {
+ *   std::cout << "three->index=" << three->index << std::endl;
+ * }
+ * \endcode
+ * 
+ */

@@ -1,0 +1,416 @@
+// CircularQueue.icc
+#define BCQ CircularQueue<T,N>
+
+namespace cdn
+{
+namespace container
+{
+
+CircularQueueError::CircularQueueError (const std::string& s)
+  : std::runtime_error (s)
+{ }
+
+CircularQueueShutdown::CircularQueueShutdown ()
+  : std::runtime_error ("Queue has been shutdown")
+{ }
+
+
+template <typename T, std::size_t N>
+inline
+BCQ::CircularQueue (const CircularQueueMode& mode)
+  throw (CircularQueueError)
+  : CircularQueue (mode, { })
+{ }
+  
+template <typename T, std::size_t N>
+inline
+BCQ::CircularQueue (const CircularQueueMode& mode,
+                    const T& initialValue)
+  throw (CircularQueueError)
+try
+  : m_bookkeeping (mode),
+    m_cond ()
+{
+  auto lock = lockDataGuard (m_bookkeeping);
+  m_bookkeeping (lock).m_buffer.fill (initialValue);
+}
+catch (const std::system_error&)
+{
+  throw CircularQueueError ("Mutex error");
+}
+catch (...)
+{
+  throw CircularQueueError ("T assignment error");
+}
+
+template <typename T, std::size_t N>
+inline
+bool
+BCQ::isEmpty ()
+  const
+  throw (CircularQueueError)
+{
+  bool result = false;
+  try
+  {
+    auto lock = lockDataGuard (m_bookkeeping);
+    result = m_bookkeeping (lock).isEmpty;
+  }
+  catch (const std::system_error&)
+  {
+    throw CircularQueueError ("Mutex error");
+  }
+  return result;
+}
+
+// number of elements in the array
+template <typename T, std::size_t N>
+inline
+std::size_t
+BCQ::size ()
+  const
+  throw (CircularQueueError)
+{
+  std::size_t result (0);
+  try
+  {
+    auto lock = lockDataGuard (m_bookkeeping);
+    if (! m_bookkeeping (lock).isEmpty)
+    {
+      if (m_bookkeeping (lock).nextWriteIndex > m_bookkeeping (lock).nextReadIndex)
+      {
+        result = m_bookkeeping (lock).nextWriteIndex - m_bookkeeping (lock).nextReadIndex;
+      }
+      else if (m_bookkeeping (lock).nextWriteIndex == m_bookkeeping (lock).nextReadIndex)
+      {
+        result = max ();
+      }
+      else
+      {
+        result = (max () - m_bookkeeping (lock).nextReadIndex) + m_bookkeeping (lock).nextWriteIndex;
+      }
+    }
+  }
+  catch (const std::system_error&)
+  {
+    throw CircularQueueError ("Mutex error");
+  }
+  return result;
+}
+
+template <typename T, std::size_t N>
+inline
+std::size_t
+BCQ::max ()
+  const
+  noexcept
+{
+  return N;
+// m_bookkeeping (lock).
+//  return m_buffer.max_size ();
+}
+
+template <typename T, std::size_t N>
+inline
+void
+BCQ::shutdown ()
+  throw (CircularQueueError)
+{
+  try
+  {
+    auto lock = lockDataGuard (m_bookkeeping);
+    if (m_bookkeeping (lock).isShutdown)
+    {
+      return; // silly client
+    }
+    m_bookkeeping (lock).isShutdown = true;
+    m_cond.notify_all ();  
+  }
+  catch (const std::system_error&)
+  {
+    throw CircularQueueError ("Mutex error");
+  }
+}
+
+template <typename T, std::size_t N>
+inline
+bool
+BCQ::isShutdown ()
+  const
+  throw (CircularQueueError)
+{
+  bool result = false;
+  try
+  {
+    auto lock = lockDataGuard (m_bookkeeping);
+    result = m_bookkeeping (lock).isShutdown;
+  }
+  catch (const std::system_error&)
+  {
+    throw CircularQueueError ("Mutex error");
+  }
+  return result;
+}
+
+template <typename T, std::size_t N>
+template <typename... Args>
+inline
+void
+BCQ::emplace (Args&&... args)
+  throw (CircularQueueError, CircularQueueShutdown)
+{
+  // The lambda hides the move semantics from the insert function
+  insert ([&] (std::unique_lock<Guard>& lock, std::size_t idx) 
+          {
+            m_bookkeeping (lock).m_buffer[idx] = T (std::forward<Args>(args)...); 
+          });
+}
+
+template <typename T, std::size_t N>
+inline
+void
+BCQ::push (const T& val)
+  throw (CircularQueueError, CircularQueueShutdown)
+{
+  // The lambda hides the copy assignment from the insert function
+  insert ([&] (std::unique_lock<Guard>& lock, std::size_t idx) 
+          { 
+            m_bookkeeping (lock).m_buffer[idx] = val; 
+          });
+}
+
+template <typename T, std::size_t N>
+inline
+const T
+BCQ::pop ()
+  throw (CircularQueueError, CircularQueueShutdown)
+{
+  // This lambda returns true if there is something to be popped
+  auto opt = popImpl ([&] (std::unique_lock<Guard>& lock) -> bool
+                      {
+                        // The wait predicate returns false when the conditional
+                        // should keep waiting, so this predicate will return 
+                        // true if the queue is NOT isEmpty or if the queue has 
+                        // been shutdown, returns false otherwise
+                        m_cond.wait (lock, 
+                                     [&] { return ! isEmpty () || isShutdown (); });
+
+                        // always return ture here since the array is not empty
+                        // or shutdown (which will be checked in popImpl)
+                        return true;
+                      });
+  if (! opt)
+  {
+    throw CircularQueueError ("Logic Error: Received an empty optional from popImpl"); 
+  }
+
+  return opt.get ();
+}
+
+template <typename T, std::size_t N>
+template <typename Rep, typename Period>
+inline
+boost::optional<const T>
+BCQ::pop (const std::chrono::duration<Rep, Period>& rel_time)
+  throw (CircularQueueError, CircularQueueShutdown)
+{
+  // This lambda returns true if there is something to be popped
+  return popImpl ([&] (std::unique_lock<Guard>& lock) -> bool
+                  {
+                    // The wait predicate returns false when the conditional
+                    // should keep waiting, so this predicate will return 
+                    // true if the queue is NOT isEmpty or if the queue has 
+                    // been shutdown, returns false otherwise, including if
+                    // the wait timesout
+                    return 
+                      m_cond.wait_for (lock, 
+                                       rel_time,
+                                       [&] { return ! isEmpty () || isShutdown (); });
+                  });
+}
+
+
+#ifdef CIRCULAR_QUEUE_DEBUG // eventually remove this
+template <typename T, std::size_t N>
+inline
+void
+BCQ::dump (std::ostream& strm)
+{
+  auto lock = lockDataGuard (m_bookkeeping);
+
+  auto writeIdx = m_bookkeeping (lock).nextWriteIndex;
+  auto readIdx  = m_bookkeeping (lock).nextReadIndex;
+  auto isEmpty  = m_bookkeeping (lock).isEmpty;
+
+  strm << "\nisEmpty=" << isEmpty << std::endl;
+  for (std::size_t i=0; i < m_bookkeeping (lock).m_buffer.size (); ++i)
+  {
+    strm << '[' << i << "] " << m_bookkeeping (lock).m_buffer[i];
+    if (i == readIdx)
+    {
+      strm << " <- read index";
+    }
+    if (i == writeIdx)
+    {
+      strm << " <- write index";
+    }
+    strm << std::endl; 
+  }
+  strm << std::endl;
+}
+#endif // #ifdef CIRCULAR_QUEUE_DEBUG
+
+//
+// Private member functions
+//
+
+template <typename T, std::size_t N>
+inline
+void
+BCQ::insert (std::function<void(std::unique_lock<Guard>&, std::size_t)> insertFunctor)
+  throw (CircularQueueError, CircularQueueShutdown)
+{
+  try
+  {
+    bool updateReadIndex = false;
+
+    auto lock = lockDataGuard (m_bookkeeping);
+
+    auto tmp = m_bookkeeping (lock).nextWriteIndex;
+
+    if (m_bookkeeping (lock).nextWriteIndex == m_bookkeeping (lock).nextReadIndex 
+        && ! m_bookkeeping (lock).isEmpty)
+    {
+      if (m_bookkeeping (lock).mode == CircularQueueMode::FailOnWrite)
+      {
+        throw CircularQueueError ("Queue is full");
+      }
+
+      if (m_bookkeeping (lock).mode == CircularQueueMode::BlockOnWrite)
+      {
+        // The predicate returns false when the conditional should keep waiting,
+        // so this predicate will return true if there is space to insert the 
+        // new element or if the queue has been shutdown, returns false otherwise
+        m_cond.wait (lock, [&] { return size () < max () || isShutdown (); });
+ 
+        if (isShutdown ())
+        {
+          throw CircularQueueShutdown ();
+        }
+      }
+      else if (m_bookkeeping (lock).mode == CircularQueueMode::NonBlockingWrite)
+      {
+        updateReadIndex = true;
+      }
+    }
+
+    // update nextWriteIndex
+    m_bookkeeping (lock).nextWriteIndex = nextIndex (m_bookkeeping (lock).nextWriteIndex);
+
+    // move/copy the value into the array
+    insertFunctor (lock, tmp);
+
+    m_bookkeeping (lock).isEmpty = false;
+
+    if (updateReadIndex)
+    {
+      // The queue is full so force the read index forward
+      m_bookkeeping (lock).nextReadIndex = m_bookkeeping (lock).nextWriteIndex;
+    }
+
+    m_cond.notify_all ();
+  }
+  catch (const CircularQueueError&)
+  {
+    throw;
+  }
+  catch (const CircularQueueShutdown&)
+  {
+    throw;
+  }
+  catch (const std::system_error& exc)
+  {
+    throw CircularQueueError ("Mutex error");
+  }
+  catch (...)
+  {
+    throw CircularQueueError ("T copy/move error");
+  }
+}
+
+// popImpl uses a functional try to get around the compiler complaining about 
+// missing return value
+template <typename T, std::size_t N>
+inline
+boost::optional<const T>
+BCQ::popImpl (std::function<bool(std::unique_lock<Guard>&)> waitFunctor)
+  throw (CircularQueueError, CircularQueueShutdown)
+try
+{
+  auto lock = lockDataGuard (m_bookkeeping);
+  
+  bool itemAvailable = true; // uncharacteristically optimistic
+
+  if (m_bookkeeping (lock).nextReadIndex == m_bookkeeping (lock).nextWriteIndex
+      && m_bookkeeping (lock).isEmpty)
+  {
+    itemAvailable = waitFunctor (lock);
+    
+    if (isShutdown ())
+    {
+      throw CircularQueueShutdown ();
+    }
+  }
+
+  // if we hit the timeout then return an empty optional 
+  if (! itemAvailable)
+  {
+    return { };
+  }
+
+  std::size_t curReadIndex  = m_bookkeeping (lock).nextReadIndex;
+  std::size_t nextReadIndex = nextIndex (m_bookkeeping (lock).nextReadIndex);
+  
+  // if we just read the last element update isEmpty
+  if (nextReadIndex == m_bookkeeping (lock).nextWriteIndex)
+  {
+    m_bookkeeping (lock).isEmpty = true;
+  }
+
+  m_bookkeeping (lock).nextReadIndex = nextReadIndex;
+
+  m_cond.notify_all ();
+
+  return boost::optional<const T> (m_bookkeeping (lock).m_buffer[curReadIndex]);
+}
+catch (const CircularQueueError&)
+{
+  throw;
+}
+catch (const CircularQueueShutdown&)
+{
+  throw;
+}
+catch (const std::system_error& exc)
+{
+  throw CircularQueueError ("Mutex error");
+}
+catch (...)
+{
+  throw CircularQueueError ("T copy/move error");
+}
+
+template <typename T, std::size_t N>
+inline
+std::size_t
+BCQ::nextIndex (std::size_t idx)
+  noexcept
+{
+  auto next = idx + 1;
+  return (next == max ()) ? 0 : next;
+}
+
+} // namespace container
+} // namespace cdn
+
+#undef BCQ

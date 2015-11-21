@@ -11,9 +11,9 @@ libs: $(LIBS)
 
 clean:	
 	$(RM) *.o *.i *.so *.a
-	$(RM) $(LIBS) $(EXECS) $(TEST_EXECS) $(OBJ_DIR)/*
+	$(RM) $(LIBS) $(EXECS) $(TESTS) $(OBJ_DIR)/*
 
-tests: $(TESTS)
+tests: discrete_tests
 
 %.i: %.cc
 	$(CXX) -E $(CPPFLAGS) $< > $@

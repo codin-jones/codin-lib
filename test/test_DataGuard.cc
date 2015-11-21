@@ -1,4 +1,4 @@
-// gtest_unittest.cc
+// test_DataGuard.cc
 
 #include "DataGuard.h"
 
@@ -161,7 +161,7 @@ TEST(Int,CondVarAny)
   auto lock = cdn::thread::lockDataGuard (dg);
   std::cout << "Waiting..." << std::endl;
   // A proper wait would use a predicate to ignore spurious signals
-  cond.wait (dg);
+  cond.wait (lock);
   std::cout << "Signaled!" << std::endl;
   
   fut.get ();
